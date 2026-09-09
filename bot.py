@@ -24,6 +24,12 @@ bot = commands.Bot(command_prefix=">", intents=intents)
 
 try:
     tts_engine = pyttsx3.init()
+    voices = tts_engine.getProperty("voices")
+    if voices:
+        for voice in voices:
+            if "Daniel" in voice.name:
+                tts_engine.setProperty("voice", voice.id)
+                break
 except Exception:
     tts_engine = None
 
@@ -159,8 +165,8 @@ async def tts(ctx, *, message):
     await ctx.send(message, tts=True)
 
 
-@bot.command()
-async def vctts(ctx, *, message):
+@bot.command(name="vctts")
+async def vctts_command(ctx, *, message):
     if ctx.author.voice is None:
         await ctx.reply("❌ Join a voice channel first.")
         return
@@ -181,6 +187,11 @@ async def vctts(ctx, *, message):
     except Exception as error:
         print(f"VC TTS error: {error}")
         await ctx.reply("❌ FFmpeg is required for VC TTS. Install it and add it to PATH.")
+
+
+@bot.command(name="vts")
+async def vts_command(ctx, *, message):
+    await vctts_command(ctx, message=message)
 
 
 @bot.command()
