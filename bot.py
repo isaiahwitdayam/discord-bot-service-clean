@@ -1473,6 +1473,25 @@ def terminal():
 
 
             # ==============================
+            # VOICE COMMANDS
+            # ==============================
+
+            elif command == "join":
+
+                print("Use >join in Discord. Voice commands are not supported in terminal mode.")
+
+
+            elif command == "leave":
+
+                print("Use >leave in Discord. Voice commands are not supported in terminal mode.")
+
+
+            elif command.startswith("vctts "):
+
+                print("Use >vctts <message> in Discord. Voice commands are not supported in terminal mode.")
+
+
+            # ==============================
             # FACT
             # ============================== 
 
