@@ -1,4 +1,3 @@
-import os
 import discord
 from discord.ext import commands
 import asyncio
@@ -6,7 +5,10 @@ import threading
 import random
 import datetime
 import io
+import os
+import tempfile
 
+import pyttsx3
 from PIL import Image
 
 
@@ -16,8 +18,14 @@ from PIL import Image
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.voice_states = True
 
 bot = commands.Bot(command_prefix=">", intents=intents)
+
+try:
+    tts_engine = pyttsx3.init()
+except Exception:
+    tts_engine = None
 
 CHANNEL_ID = 1546703323514535988
 
@@ -66,6 +74,10 @@ async def on_ready():
         print()
         print("FUN")
         print("say <message>")
+        print("tts <message>")
+        print("join")
+        print("leave")
+        print("vctts <message>")
         print("ping")
         print("fact")
         print("pp")
@@ -112,6 +124,63 @@ async def ping(ctx):
 async def say(ctx, *, message):
     await ctx.message.delete()
     await ctx.send(message)
+
+
+@bot.command()
+async def join(ctx):
+    if ctx.author.voice is None:
+        await ctx.reply("❌ Join a voice channel first.")
+        return
+
+    channel = ctx.author.voice.channel
+
+    if ctx.voice_client is not None:
+        if ctx.voice_client.channel != channel:
+            await ctx.voice_client.move_to(channel)
+        await ctx.reply(f"✅ Joined {channel.name}.")
+        return
+
+    await channel.connect()
+    await ctx.reply(f"✅ Joined {channel.name}.")
+
+
+@bot.command()
+async def leave(ctx):
+    if ctx.voice_client is None:
+        await ctx.reply("❌ I'm not in a voice channel.")
+        return
+
+    await ctx.voice_client.disconnect()
+    await ctx.reply("✅ Left the voice channel.")
+
+
+@bot.command()
+async def tts(ctx, *, message):
+    await ctx.send(message, tts=True)
+
+
+@bot.command()
+async def vctts(ctx, *, message):
+    if ctx.author.voice is None:
+        await ctx.reply("❌ Join a voice channel first.")
+        return
+
+    if ctx.voice_client is None:
+        await ctx.author.voice.channel.connect()
+
+    audio_path = create_tts_audio(message)
+
+    if audio_path is None:
+        await ctx.reply("❌ TTS is unavailable on this machine.")
+        return
+
+    try:
+        source = discord.FFmpegPCMAudio(audio_path)
+        ctx.voice_client.play(source)
+        await ctx.reply("🔊 Speaking in VC...")
+    except Exception as error:
+        print(f"VC TTS error: {error}")
+        await ctx.reply("❌ FFmpeg is required for VC TTS. Install it and add it to PATH.")
 
 
 @bot.command()
@@ -1266,6 +1335,22 @@ def terminal():
                 )
 
                 print(
+                    "tts <message>"
+                )
+
+                print(
+                    "join"
+                )
+
+                print(
+                    "leave"
+                )
+
+                print(
+                    "vctts <message>"
+                )
+
+                print(
                     "ping"
                 )
 
@@ -1362,6 +1447,17 @@ def terminal():
                     terminal_send(message),
                     bot.loop
                 )
+
+
+            # ==============================
+            # TTS
+            # ==============================
+
+            elif command.startswith("tts "):
+
+                message = command[4:]
+                speak_text(message)
+                print(f"Speaking: {message}")
 
 
             # ==============================
@@ -1947,6 +2043,45 @@ def terminal():
 # ==========================================================
 # TERMINAL FUNCTIONS
 # ==========================================================
+
+def create_tts_audio(message):
+    if not message or not message.strip():
+        return None
+
+    if tts_engine is None:
+        return None
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+    temp_file.close()
+    temp_path = temp_file.name
+
+    try:
+        tts_engine.save_to_file(message, temp_path)
+        tts_engine.runAndWait()
+        return temp_path
+    except Exception as error:
+        print(f"TTS file error: {error}")
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
+        return None
+
+
+def speak_text(message):
+    if not message or not message.strip():
+        return
+
+    if tts_engine is None:
+        print("TTS is unavailable on this system.")
+        return
+
+    try:
+        tts_engine.say(message)
+        tts_engine.runAndWait()
+    except Exception as error:
+        print(f"TTS error: {error}")
+
 
 async def get_general_channel():
 
@@ -2793,4 +2928,5 @@ async def terminal_avatar(
 # START BOT
 # ==============================
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+token = input("Enter your Discord bot token: ").strip()
+bot.run(token)
